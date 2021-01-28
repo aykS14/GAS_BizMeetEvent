@@ -1,0 +1,1330 @@
+<!-- 処理内容はコメントに記載の通り。 -->
+<!-- コード.gs側のfunctionを呼び出しするのにgoogle.script.run.withSuccessHandlerを使用します。 -->
+<!-- bootstrap-validatorのバリデーションはsubmitしないとかからないため小細工してます -->
+<!-- フォームsubmitで、submit用のボタンのスタイルがdisabledだったら、バリデーションエラーなので、送信処理はしないようにする -->
+<!-- フォームsubmitで、画面遷移させないように、onsubmit="return false;"にしておく -->
+
+<!--<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js" type="text/javascript" ></script>-->
+<!--<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>-->
+
+<script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+
+<script src="https://use.fontawesome.com/7bcbed1321.js"></script>
+
+<!--toastr.js-->
+<script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/js/toastr.min.js"></script>
+
+<!--
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.12.1/js/bootstrap-select.min.js"></script>-->
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/1000hz-bootstrap-validator/0.11.8/validator.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-maxlength/1.7.0/bootstrap-maxlength.min.js"></script>
+
+<!--ajaxzip3.js-->
+<script src="https://ajaxzip3.github.io/ajaxzip3.js" charset="UTF-8"></script>
+
+<!--Moment-->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.18.1/moment.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.18.1/locale/ja.js" type="text/javascript"></script>
+
+<script>
+// indexページ表示　//https://script.google.com/a/icnet.co.jp/macros/s/AKfycbwdXvymmGdioT9C4l0oEbeDKorvdmiNXVByRE8h2Zk/dev?page=input&recv=new
+$(window).on('load',function(){
+  var recv = $('#recv_id').text();
+  if(recv!='new'){
+    //SSデータ検索
+    $("#edt_ck").prop("checked",true);
+    $('#recv_no').val(recv);
+    //$('#recv_no').prop('disabled', true);
+    console.log('onload_Function');
+    overwright(recv);
+  }else{;//if(recv!='new')
+    $("#edt_ck").prop("checked",false);
+    //$('#recv_no').prop('disabled', false);
+    $('#list_row').val(0);
+    processing(false);
+  };
+});
+
+function overwright(recv){
+  try {
+    processing(true);
+    google.script.run.withSuccessHandler(function(result) {
+      if (result !== null) {
+        var data = JSON.parse(result);
+        //console.log("parse:", data);
+        var edt=[];
+        for(var i=0; i<data.length; ++i ){//データの行ループ
+          if(data[i][1]==recv){
+            $('#list_row').val(i+1);//行番号、データは配列のため0開始
+            for(var j=1; j<(data[i].length); ++j ) {//データの列ループ
+              edt[j]=data[i][j];
+            };//console.log('edt',edt);
+            show_edit(edt);//リストデータをフォームに反映
+            processing(false);
+            toastr.info('データを反映しました。');
+          };
+        };
+      };
+    }).withFailureHandler(function(result) {
+      processing(false);
+      toastr.error('データ取得に失敗しました。', result);
+    }).getList();
+  } catch (e) {
+    processing(false);
+    toastr.error(e);
+  };
+};
+
+function show_edit(data){
+  //console.log(data);
+  $('#inp_corp').val(data[3]);//提案者名
+  $('#inp_corp_kana').val(data[4]);//提案者カナ
+  $('#inp_pres_pos').val(data[5]);//代表者役職
+  $('#inp_pres').val(data[6]);//代表者氏名
+  $('#inp_pres_kana').val(data[7]);//代表者カナ
+  $('#inp_zip1').val(data[8].substr(0,3));//〒上3桁
+  $('#inp_zip2').val(data[8].substr(-4));//〒下4桁
+  pref_slct('inp_addr1',data[9]);//$('#inp_addr1'); //都道府県
+  $('#inp_addr2').val(data[10]);//市区郡
+  $('#inp_addr3').val(data[11]);//町域
+  $('#inp_addr4').val(data[12]);//番地以降
+  $('#inp_dept').val(data[13]);//連絡先部署名
+  $('#inp_name_pos').val(data[14]);//連絡先役職
+  $('#inp_name').val(data[15]);//連絡先氏名
+  $('#inp_name_kana').val(data[16]);//連絡先氏名カナ
+  $('#inp_tel').val(data[17]);//TEL
+  if(data[18].indexOf(',')!==-1){
+    $('#inp_mail').val(data[18].substr(0,data[18].indexOf(',')));//E-mail
+    $('#inp_mailadd').val(data[18].substr(data[18].indexOf(',')+1));
+  }else{
+    $('#inp_mail').val(data[18]);//E-mail
+  }
+  $('#inp_hp').val(data[19]);//HP
+
+  sdgs_cheked(data[20]);//SDGs目標
+  $('#pps_sdgs_tx').val(data[21]);//貢献内容
+  
+  $('#tx_reason').val(data[22]);//応募理由
+  support_consultation(data[23]);//サポーターと相談内容
+  
+  $('#agreement').val(data[24]);//応募同意
+  
+  var fldURL = data[25].replace('https://drive.google.com/drive/folders/','');
+  $('#fld_id').html(fldURL);//フォルダID
+  upFile_check(fldURL);
+  //ck_change();
+  $('#biz_plan').attr('required', false);
+  /*
+  $('#dmy_biz_Fund').attr('required', false);
+  $('#dmy_corp_info').attr('required', false);
+  $('#dmy_corp_zaimu').attr('required', false);
+  */
+  
+  $('#inp_corp').focus();//バリデーターチェックをはずすため一旦フォーカスを入れる
+  $('#inp_corp').blur();//バリデーターチェックをはずすためフォーカスをはずす
+  tmp_label(true);
+  //$('#send_button').prop('disabled', false);//修正なので修正前の状態は送信可状態のため強制的にクリック可にする
+  //processing(false);
+};
+function pref_slct(id,pref){
+//都道府県名：テキストからオプション選択
+  var options = document.getElementById(id).options;
+  for(var i = 0; i < options.length; i++){
+      if(options[i].text === pref){
+          options[i].selected = true;
+          break;
+      };
+  };
+};
+function sdgs_cheked(tx){
+  //SDGsチェックボックスの転記処理
+  if(tx!==''){
+    console.log('tx',tx);
+    var resArray = String(tx).split(",");
+    for(var i=0; i<resArray.length; ++i ){
+      //console.log('array',resArray[i],$('input:checkbox[name="' + ckname + '"]').attr('name'));
+      //$('input[name="'+ ckname + '"]').val(resArray[i]);
+      $('input:checkbox[name="sdgs_target"]').val(resArray);
+      $('#sdgs_tx').val(tx);
+    };
+  };
+  //SDGs_cnt_Check();
+};
+function support_consultation(tx){
+  //サポーターと相談内容の転記処理
+  if(tx!==''){
+    console.log('tx',tx);
+    var str = String(tx).replace(/【/g,',');
+    str = String(str).replace(/】/g,',');
+    var resArray = String(str).split(',');console.log('resArray:',resArray);
+    var n=1;
+    for(var i=1; i<resArray.length; ++i ){
+      $('#tx_support' + i).val(resArray[n]);
+      $('#tx_sodan' + i).val(resArray[n+1]);
+      n += 2;
+    };
+  };
+  //SDGs_cnt_Check();
+};
+
+/*
+function anq2_cheked(tx){
+  //アンケート２チェックボックスの転記処理
+  if(tx!==''){
+    console.log('tx',tx);
+    var resArray = String(tx).split(",");
+    for(var i=0; i<resArray.length; ++i ){
+      //console.log('array',resArray[i],$('input:checkbox[name="' + ckname + '"]').attr('name'));
+      //$('input[name="'+ ckname + '"]').val(resArray[i]);
+      $('input:checkbox[name="anq2_ck"]').val(resArray);
+      $('#anq2_tx').val(tx);
+    };
+  };
+};
+*/
+
+//アップロードファイル
+function tmp_label(tf){
+  if(tf){
+    $('#lb1').html('ビジネス詳細記入書');
+    //$('#lb2').html('資金計画表');
+    //$('#lb3').html('会社概要（会社案内など）');
+    //$('#lb4').html('定款');
+    //$('#lb5').html('財務諸表（過去3年分）');
+  }else{
+    $('#lb1').html('ビジネス詳細記入書<font color="red">※</font>');
+    //$('#lb2').html('資金計画表<font color="red">※</font>');
+    //$('#lb3').html('登記事項証明書<font color="red">※</font>');
+    //$('#lb4').html('定款<font color="red">※</font>')
+    //$('#lb5').html('財務諸表（過去3年分）<font color="red">※</font>');
+  };
+}
+function upFile_check(fld_ID){
+  if(fld_ID!=''){
+    google.script.run
+      .withSuccessHandler(function(fld_result) {
+        if (fld_result !==null) {
+          $('.tmpfile').show();
+          var fld_data = JSON.parse(fld_result);
+          var tbl = '<table class="table table-striped table-hover"><thead><tr><th class="col-xs-1">削除</th><th>アップロード済みファイル</th></tr></thead><tbody><tr>'
+          console.log("parse:", fld_data);
+          for(var i=1; i<fld_data.length; ++i ){//データの行ループ
+            var nmb = 'tmp_' + i;
+            var id = fld_data[i][1];
+            tbl += '<td><button type="button" class="btn btn-danger clrtmp" id="' + nmb +'" value="' + id + '"><i class="fa fa-trash-o"></i></button></td><td><div id="clrtmp_' + nmb + '">' + fld_data[i][0] + '</div></td><tr>';
+          };
+          tbl += '</tbody></table>';
+          document.getElementById('upload_div').innerHTML = tbl;//Javascript
+        };
+    })
+    .upFileList(fld_ID);
+  };
+};
+$(document).on("click", ".clrtmp", function(){
+    var file_ID =  $(this).val();
+    var nmb = $(this).attr('id')
+    console.log('file_ID',file_ID);
+    google.script.run
+      .withSuccessHandler(function() {
+        $('#' + nmb).removeClass('btn-danger');
+        $('#' + nmb).addClass('btn-default');
+        $('#' + nmb).prop('disabled', true);
+        var id = '#clrtmp_' + nmb;
+        $(id).css('text-decoration', 'line-through');
+      })
+      .trashedFile(file_ID)
+});
+
+//■新規or修正
+$(function(){
+  $('#recv_no').change(function(){
+    var recv = $('#recv_id').text();
+    if($('#recv_no').val()==''){
+      tmp_label(false);
+    }else{
+      if(recv=='new'){
+        console.log('Change_Function');
+        //processing(true);
+        overwright($('#recv_no').val());
+        //processing(false);
+      };
+    }
+  });
+});
+$(function(){
+  $("#edt_ck").click(function(){
+    if($('input[name="edit_ck"]:checked').val() == 'O'){//応募の修正
+      $('#recv_no').attr('required', true);
+      $('#recv_no').prop('disabled', false);
+      $('#recv_no').attr('required', true);
+      $('#upload_div').show();
+    }else{
+      $('#recv_no').attr('required', false);
+      $('#recv_no').val('');
+      $('#recv_no').focus();//バリデーターチェックをはずすため一旦フォーカスを入れる
+      $('#recv_no').prop('disabled', true);
+      tmp_label(false);
+      $('#upload_div').hide();
+    };
+    $('#recv_no').focus();//バリデーターチェックを入れるため一旦フォーカスを入れる
+    $('#recv_no').blur();//バリデーターチェックをはずすためフォーカスをはずす
+  });
+});
+
+/*DatePicker*/
+/*
+$(function(){
+    $("#corp_est").datepicker({
+      changeMonth: true,
+      changeYear: true,
+      yearRange: "-100:+0",
+      dateFormat: 'yy/m/d',
+    })
+});
+*/
+/*
+ * 半角英数字かチェック
+ * @return true:半角英数字である(もしくは対象文字列がない), false:半角英数字でない
+ */
+function isHalfWidthAlphanumeric(value) {
+  if ( value == null )
+    return;
+  if( value.match( /[^A-Za-z0-9\s.-]+/ ) ) {
+    alert("半角英文字で入力してください");
+    return false;
+   }
+   return true;
+}
+/*
+ * 半角数字かチェック
+ * @return true:半角数字である(もしくは対象文字列がない), false:半角数字でない
+ */
+function isNumeric(value) {
+  if ( value == null )
+    return;
+  if( value.match( /[^0-9.,-]+/ ) ) {
+    alert("半角数字で入力して下さい。");
+    return false;
+  }
+  return true;
+}
+/**
+ * ひらがな・カタカナかチェック
+ * @return true:ひらがな・カタカナである(もしくは対象文字列がない), false:ひらがな・カタカナでない
+ */
+function isKana(value) {
+  if ( value == null )
+    return;
+  if( value.match( /[^ぁ-んァ-ン　\s]+/ ) ) {
+    alert("ひらがなもしくはカタカナで入力して下さい。");
+    return false;
+  }
+  return true;
+};
+
+//テキストエリア*MaxLength
+$('#pps_outline').maxlength({
+    alwaysShow: true
+});
+$('#pps_sdgs_tx').maxlength({
+    alwaysShow: true
+});
+$('#tx_reason').maxlength({
+    alwaysShow: true
+});
+//■チェックボックス・ラジオボタン　追加入力のバリデータ
+/*
+function ck_change(){
+    switch($('input[name="jimu2"]:checked').val()){
+      case 'その他'://経理処理その他
+        $('#jimu2_tx').prop('disabled', false);
+        $('#jimu2_tx').attr('required', true);
+        $('#jimu2_tx').focus();//バリデーターチェックを入れるため一旦フォーカスを入れる
+        break;
+      default:
+        $('#jimu2_tx').attr('required', false);
+        $('#jimu2_tx').val('');
+        $('#jimu2_tx').focus();//バリデーターチェックをはずすため一旦フォーカスを入れる
+        $('#jimu2_tx').blur();//バリデーターチェックをはずすためフォーカスをはずす
+        $('#jimu2_tx').prop('disabled', true);
+        break;
+    };
+    
+    switch($('input[name="kyodo"]:checked').val()){
+      case 'O'://共同提案あり
+        $('#kyodo_tx').prop('disabled', false);
+        $('#kyodo_tx').attr('required', true);
+        $('#kyodo_tx').focus();//バリデーターチェックをはずすため一旦フォーカスを入れる
+        $('#kyodo_tx').blur();//バリデーターチェックをはずすためフォーカスをはずす
+        break;
+      case 'X':
+        $('#kyodo_tx').attr('required', false);
+        $('#kyodo_tx').val('');
+        $('#kyodo_tx').focus();//バリデーターチェックをはずすため一旦フォーカスを入れる
+        $('#kyodo_tx').blur();//バリデーターチェックをはずすためフォーカスをはずす
+        $('#kyodo_tx').prop('disabled', true);
+        break;
+    };
+    
+    switch($('input[name="josei"]:checked').val()){
+      case 'O'://助成あり
+        $('#josei_tx1').prop('disabled', false);
+        $('#josei_tx1').attr('required', true);
+        $('#josei_tx1').focus();//バリデーターチェックをはずすため一旦フォーカスを入れる
+        $('#josei_tx1').blur();//バリデーターチェックをはずすためフォーカスをはずす
+        
+        $('#josei_tx2').prop('disabled', false);
+        $('#josei_tx2').attr('required', true);
+        $('#josei_tx2').focus();//バリデーターチェックをはずすため一旦フォーカスを入れる
+        $('#josei_tx2').blur();//バリデーターチェックをはずすためフォーカスをはずす
+        break;
+      case 'X':
+        $('#josei_tx1').attr('required', false);
+        $('#josei_tx1').val('');
+        $('#josei_tx1').focus();//バリデーターチェックをはずすため一旦フォーカスを入れる
+        $('#josei_tx1').blur();//バリデーターチェックをはずすためフォーカスをはずす
+        $('#josei_tx1').prop('disabled', true);
+        
+        $('#josei_tx2').attr('required', false);
+        $('#josei_tx2').val('');
+        $('#josei_tx2').focus();//バリデーターチェックをはずすため一旦フォーカスを入れる
+        $('#josei_tx2').blur();//バリデーターチェックをはずすためフォーカスをはずす
+        $('#josei_tx2').prop('disabled', true);
+        break;
+    };
+    
+    switch($('input[name="anq"]:checked').val()){
+      case '02'://紹介企業
+        $('#anq_2tx').prop('disabled', false);
+        $('#anq_2tx').attr('required', true);
+        $('#anq_2tx').focus();//バリデーターチェックをはずすため一旦フォーカスを入れる
+        $('#anq_2tx').blur();//バリデーターチェックをはずすためフォーカスをはずす
+        
+        $('#anq_10tx').attr('required', false);
+        $('#anq_10tx').val('');
+        $('#anq_10tx').focus();//バリデーターチェックをはずすため一旦フォーカスを入れる
+        $('#anq_10tx').blur();//バリデーターチェックをはずすためフォーカスをはずす
+        $('#anq_10tx').prop('disabled', true);
+        break;
+      case '10'://その他
+        $('#anq_2tx').attr('required', false);
+        $('#anq_2tx').val('');
+        $('#anq_2tx').focus();//バリデーターチェックをはずすため一旦フォーカスを入れる
+        $('#anq_2tx').blur();//バリデーターチェックをはずすためフォーカスをはずす
+        $('#anq_2tx').prop('disabled', true);
+        
+        $('#anq_10tx').prop('disabled', false);
+        $('#anq_10tx').attr('required', true);
+        $('#anq_10tx').focus();//バリデーターチェックをはずすため一旦フォーカスを入れる
+        $('#anq_10tx').blur();//バリデーターチェックをはずすためフォーカスをはずす
+        break;
+      default :
+        $('#anq_2tx').attr('required', false);
+        $('#anq_2tx').val('');
+        $('#anq_2tx').focus();//バリデーターチェックをはずすため一旦フォーカスを入れる
+        $('#anq_2tx').blur();//バリデーターチェックをはずすためフォーカスをはずす
+        $('#anq_2tx').prop('disabled', true);
+        
+        $('#anq_10tx').attr('required', false);
+        $('#anq_10tx').val('');
+        $('#anq_10tx').focus();//バリデーターチェックをはずすため一旦フォーカスを入れる
+        $('#anq_10tx').blur();//バリデーターチェックをはずすためフォーカスをはずす
+        $('#anq_10tx').prop('disabled', true);
+        break;
+      };
+    switch($('#anq2_8').prop("checked")){//★★★★★★★★★★★★★★★★★★★★★★★
+      case true://その他
+        $('#anq2_8tx').prop('disabled', false);
+        $('#anq2_8tx').attr('required', true);
+        $('#anq2_8tx').focus();//バリデーターチェックをはずすため一旦フォーカスを入れる
+        $('#anq2_8tx').blur();//バリデーターチェックをはずすためフォーカスをはずす
+        break;
+      default :
+        $('#anq2_8tx').attr('required', false);
+        $('#anq2_8tx').val('');
+        $('#anq2_8tx').focus();//バリデーターチェックをはずすため一旦フォーカスを入れる
+        $('#anq2_8tx').blur();//バリデーターチェックをはずすためフォーカスをはずす
+        $('#anq2_8tx').prop('disabled', true);
+        break;
+      };      
+};
+$(function() {
+  $("[name='jimu2']").click(function() {
+    var num = $("[name='jimu2']").index(this);console.log('jimu2:',num);
+    ck_change();
+  });
+});
+
+$(function() {
+  $("[name='kyodo']").click(function() {
+    var num = $("[name='kyodo']").index(this);console.log('kyodo:',num);
+    ck_change();
+  });
+});
+
+$(function() {
+  $("[name='josei']").click(function() {
+    var num = $("[name='josei']").index(this);console.log('josei:',num);
+    ck_change();
+  });
+});
+
+$(function() {
+  $("[name='anq']").click(function() {
+    var num = $("[name='anq']").index(this);console.log('anq:',num);
+    ck_change();
+  });
+});
+$(function() {
+  $('#anq2_8').click(function() {
+    //var num = $('#anq2_8').index(this);console.log('anq:',num);
+    ck_change();
+  });
+});
+*/
+
+//サポーター相談内容２～８バリデータ
+$(function() {
+  $('#tx_support2').change(function(){
+    if($(this).val()==''){
+      $('#tx_sodan2').attr('required', false);
+      $('#tx_sodan2').focus();//バリデーターチェックをはずすため一旦フォーカスを入れる
+      $('#tx_sodan2').blur();//バリデーターチェックをはずすためフォーカスをはずす
+    }else{
+      $('#tx_sodan2').attr('required', true);
+      $('#tx_sodan2').focus();//バリデーターチェックをはずすため一旦フォーカスを入れる
+      $('#tx_sodan2').blur();//バリデーターチェックをはずすためフォーカスをはずす
+    };
+  });
+});
+$(function() {
+  $('#tx_sodan2').change(function(){
+    if($(this).val()==''){
+      $('#tx_support2').attr('required', false);
+      $('#tx_support2').focus();//バリデーターチェックをはずすため一旦フォーカスを入れる
+      $('#tx_support2').blur();//バリデーターチェックをはずすためフォーカスをはずす
+    }else{
+      $('#tx_support2').attr('required', true);
+      $('#tx_support2').focus();//バリデーターチェックをはずすため一旦フォーカスを入れる
+      $('#tx_support2').blur();//バリデーターチェックをはずすためフォーカスをはずす
+    };
+  });
+});
+$(function() {
+  $('#tx_support3').change(function(){
+    if($(this).val()==''){
+      $('#tx_sodan3').attr('required', false);
+      $('#tx_sodan3').focus();//バリデーターチェックをはずすため一旦フォーカスを入れる
+      $('#tx_sodan3').blur();//バリデーターチェックをはずすためフォーカスをはずす
+    }else{
+      $('#tx_sodan3').attr('required', true);
+      $('#tx_sodan3').focus();//バリデーターチェックをはずすため一旦フォーカスを入れる
+      $('#tx_sodan3').blur();//バリデーターチェックをはずすためフォーカスをはずす
+    };
+  });
+});
+$(function() {
+  $('#tx_sodan3').change(function(){
+    if($(this).val()==''){
+      $('#tx_support3').attr('required', false);
+      $('#tx_support3').focus();//バリデーターチェックをはずすため一旦フォーカスを入れる
+      $('#tx_support3').blur();//バリデーターチェックをはずすためフォーカスをはずす
+    }else{
+      $('#tx_support3').attr('required', true);
+      $('#tx_support3').focus();//バリデーターチェックをはずすため一旦フォーカスを入れる
+      $('#tx_support3').blur();//バリデーターチェックをはずすためフォーカスをはずす
+    };
+  });
+});
+$(function() {
+  $('#tx_support4').change(function(){
+    if($(this).val()==''){
+      $('#tx_sodan4').attr('required', false);
+      $('#tx_sodan4').focus();//バリデーターチェックをはずすため一旦フォーカスを入れる
+      $('#tx_sodan4').blur();//バリデーターチェックをはずすためフォーカスをはずす
+    }else{
+      $('#tx_sodan4').attr('required', true);
+      $('#tx_sodan4').focus();//バリデーターチェックをはずすため一旦フォーカスを入れる
+      $('#tx_sodan4').blur();//バリデーターチェックをはずすためフォーカスをはずす
+    };
+  });
+});
+$(function() {
+  $('#tx_sodan4').change(function(){
+    if($(this).val()==''){
+      $('#tx_support4').attr('required', false);
+      $('#tx_support4').focus();//バリデーターチェックをはずすため一旦フォーカスを入れる
+      $('#tx_support4').blur();//バリデーターチェックをはずすためフォーカスをはずす
+    }else{
+      $('#tx_support4').attr('required', true);
+      $('#tx_support4').focus();//バリデーターチェックをはずすため一旦フォーカスを入れる
+      $('#tx_support4').blur();//バリデーターチェックをはずすためフォーカスをはずす
+    };
+  });
+});
+$(function() {
+  $('#tx_support5').change(function(){
+    if($(this).val()==''){
+      $('#tx_sodan5').attr('required', false);
+      $('#tx_sodan5').focus();//バリデーターチェックをはずすため一旦フォーカスを入れる
+      $('#tx_sodan5').blur();//バリデーターチェックをはずすためフォーカスをはずす
+    }else{
+      $('#tx_sodan5').attr('required', true);
+      $('#tx_sodan5').focus();//バリデーターチェックをはずすため一旦フォーカスを入れる
+      $('#tx_sodan5').blur();//バリデーターチェックをはずすためフォーカスをはずす
+    };
+  });
+});
+$(function() {
+  $('#tx_sodan5').change(function(){
+    if($(this).val()==''){
+      $('#tx_support5').attr('required', false);
+      $('#tx_support5').focus();//バリデーターチェックをはずすため一旦フォーカスを入れる
+      $('#tx_support5').blur();//バリデーターチェックをはずすためフォーカスをはずす
+    }else{
+      $('#tx_support5').attr('required', true);
+      $('#tx_support5').focus();//バリデーターチェックをはずすため一旦フォーカスを入れる
+      $('#tx_support5').blur();//バリデーターチェックをはずすためフォーカスをはずす
+    };
+  });
+});
+$(function() {
+  $('#tx_support6').change(function(){
+    if($(this).val()==''){
+      $('#tx_sodan6').attr('required', false);
+      $('#tx_sodan6').focus();//バリデーターチェックをはずすため一旦フォーカスを入れる
+      $('#tx_sodan6').blur();//バリデーターチェックをはずすためフォーカスをはずす
+    }else{
+      $('#tx_sodan6').attr('required', true);
+      $('#tx_sodan6').focus();//バリデーターチェックをはずすため一旦フォーカスを入れる
+      $('#tx_sodan6').blur();//バリデーターチェックをはずすためフォーカスをはずす
+    };
+  });
+});
+$(function() {
+  $('#tx_sodan6').change(function(){
+    if($(this).val()==''){
+      $('#tx_support6').attr('required', false);
+      $('#tx_support6').focus();//バリデーターチェックをはずすため一旦フォーカスを入れる
+      $('#tx_support6').blur();//バリデーターチェックをはずすためフォーカスをはずす
+    }else{
+      $('#tx_support6').attr('required', true);
+      $('#tx_support6').focus();//バリデーターチェックをはずすため一旦フォーカスを入れる
+      $('#tx_support6').blur();//バリデーターチェックをはずすためフォーカスをはずす
+    };
+  });
+});
+$(function() {
+  $('#tx_support7').change(function(){
+    if($(this).val()==''){
+      $('#tx_sodan7').attr('required', false);
+      $('#tx_sodan7').focus();//バリデーターチェックをはずすため一旦フォーカスを入れる
+      $('#tx_sodan7').blur();//バリデーターチェックをはずすためフォーカスをはずす
+    }else{
+      $('#tx_sodan7').attr('required', true);
+      $('#tx_sodan7').focus();//バリデーターチェックをはずすため一旦フォーカスを入れる
+      $('#tx_sodan7').blur();//バリデーターチェックをはずすためフォーカスをはずす
+    };
+  });
+});
+$(function() {
+  $('#tx_sodan7').change(function(){
+    if($(this).val()==''){
+      $('#tx_support7').attr('required', false);
+      $('#tx_support7').focus();//バリデーターチェックをはずすため一旦フォーカスを入れる
+      $('#tx_support7').blur();//バリデーターチェックをはずすためフォーカスをはずす
+    }else{
+      $('#tx_support7').attr('required', true);
+      $('#tx_support7').focus();//バリデーターチェックをはずすため一旦フォーカスを入れる
+      $('#tx_support7').blur();//バリデーターチェックをはずすためフォーカスをはずす
+    };
+  });
+});
+$(function() {
+  $('#tx_support8').change(function(){
+    if($(this).val()==''){
+      $('#tx_sodan8').attr('required', false);
+      $('#tx_sodan8').focus();//バリデーターチェックをはずすため一旦フォーカスを入れる
+      $('#tx_sodan8').blur();//バリデーターチェックをはずすためフォーカスをはずす
+    }else{
+      $('#tx_sodan8').attr('required', true);
+      $('#tx_sodan8').focus();//バリデーターチェックをはずすため一旦フォーカスを入れる
+      $('#tx_sodan8').blur();//バリデーターチェックをはずすためフォーカスをはずす
+    };
+  });
+});
+$(function() {
+  $('#tx_sodan8').change(function(){
+    if($(this).val()==''){
+      $('#tx_support8').attr('required', false);
+      $('#tx_support8').focus();//バリデーターチェックをはずすため一旦フォーカスを入れる
+      $('#tx_support8').blur();//バリデーターチェックをはずすためフォーカスをはずす
+    }else{
+      $('#tx_support8').attr('required', true);
+      $('#tx_support8').focus();//バリデーターチェックをはずすため一旦フォーカスを入れる
+      $('#tx_support8').blur();//バリデーターチェックをはずすためフォーカスをはずす
+    };
+  });
+});
+
+$(function() {
+  $('#edit_tanto').click(function() {
+    if($('#edit_tanto').prop("checked")){
+      $('#inp_name_pos').val($('#inp_pres_pos').val());
+      $('#inp_name').val($('#inp_pres').val());
+      $('#inp_name_kana').val($('#inp_pres_kana').val());
+    }else{
+      $('#inp_name_pos').val('');
+      $('#inp_name').val('');
+      $('#inp_name_kana').val('');
+    };
+  })
+});
+
+//桁区切り
+$(function() {
+  // フォーカスアウト
+  $('.digit').on('blur', function(){
+    var num = $(this).val();
+    //num = num.replace(/(\d)(?=(\d\d\d)+$)/g, '$1,');
+    num = num.replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1,');
+    $(this).val(num);
+  });
+  // フォーカス
+  $('.digit').on('focus', function(){
+    var num = $(this).val();
+    num = num.replace(/,/g, '');
+    $(this).val(num);
+  });
+});
+
+//会社名から省略形法人格除く
+/*
+$(function() {
+  // フォーカスアウト
+  $('#inp_corp').on('blur', function(){
+    var str = $(this).val();
+    //num = num.replace(/(\d)(?=(\d\d\d)+$)/g, '$1,');
+    str = str.replace('（株）', '');
+    str = str.replace('（株', '');
+    str = str.replace('株）', '');
+    str = str.replace('㈱', '');
+
+    str = str.replace('（名）', '');
+    str = str.replace('（名', '');
+    str = str.replace('名）', '');
+    str = str.replace('㈴', '');
+
+    str = str.replace('（資）', '');
+    str = str.replace('（資', '');
+    str = str.replace('資）', '');
+
+    str = str.replace('（同）', '');
+    str = str.replace('（同', '');
+    str = str.replace('同）', '');
+    
+    str = str.replace('（有）', '');
+    str = str.replace('（有', '');
+    str = str.replace('有）', '');
+    str = str.replace('㈲', '');
+
+    $(this).val(str);
+    inp_corp_check($(this).val());
+  });
+});
+*/
+/*
+function inp_corp_check(tx){
+  var legal = ["株式会社","有限会社","合名会社","合資会社","合同会社","財団法人","一般財団法人","公益財団法人","特例財団法人","特例社団法人","社団法人","一般社団法人","公益社団法人","医療法人","医療法人社団","医療法人財団","社会医療法人","学校法人","国立大学法人","公立大学法人","社会福祉法人","相互会社","特定非営利活動法人","独立行政法人","地方独立行政法人","弁護士法人","司法書士法人","行政書士法人","税理士法人","宗教法人","有限責任中間法人","無限責任中間法人"];
+  var str = tx;
+  for(var n=0; n<legal.length; ++n ){ //console.log('inp_corp_check:',tx,legal[n],(str.indexOf(legal[n])));
+    var result = str.indexOf(legal[n]);
+    if(result !== -1) {
+      
+      $('#inp_corp_label').css('color','#333333');
+      $('#inp_corp').removeClass("has-error");
+      $('#inp_corp').css('color','#555');
+      $('#inp_corp').css('border','1px solid #ccc');
+      $('#inp_corp').css('border-radius','4px');
+      $('.inp_corp-err').css('color','#737373');
+      $('#send_button').prop('disabled', false);
+      
+      break;
+    }else{
+    
+      $('#inp_corp_label').css('color','#dc3545');
+      $('#inp_corp').addClass("has-error");
+      $('#inp_corp').css('color','#dc3545');
+      $('#inp_corp').css('border','1px solid #dc3545');
+      $('#inp_corp').css('border-radius','4px');
+      $('.inp_corp-err').css('color','#dc3545');
+      $('#send_button').prop('disabled', true);
+      
+    };
+  };
+  
+};
+
+//カナから法人格除く
+$(function() {
+  // フォーカスアウト
+  $('#inp_corp_kana').on('blur', function(){
+    var str = $(this).val();
+    //num = num.replace(/(\d)(?=(\d\d\d)+$)/g, '$1,');
+    str = str.replace(/カブシキガイシャ/g, '');
+    str = str.replace(/ゴウメイガイシャ/g, '');
+    str = str.replace(/ゴウシガイシャ/g, '');
+    str = str.replace(/ゴウドウガイシャ/g, '');
+    str = str.replace(/ユウゲンガイシャ/g, '');
+    
+    str = str.replace(/カブシキカイシャ/g, '');
+    str = str.replace(/ゴウメイカイシャ/g, '');
+    str = str.replace(/ゴウシカイシャ/g, '');
+    str = str.replace(/ゴウドウカイシャ/g, '');
+    str = str.replace(/ユウゲンカイシャ/g, '');
+    
+    $(this).val(str);
+  });
+});
+*/
+//ファイル選択時にファイル名表示
+$('.custom-file-input').on('change',function(){
+    $(this).next('.custom-file-label').empty();
+    var fileName='';
+    var numFiles=$(this)[0].files.length;
+    var items = $(this)[0].files;
+    
+    if(numFiles>0){
+      for(var i=0; i<numFiles; ++i ){
+        if(fileName==''){
+          var fileName = items[i].name;
+        }else{
+          fileName += ', ' + items[i].name;
+        };
+      }
+      $(this).next('.custom-file-label').html(fileName);
+    }else{
+      $(this).next('.custom-file-label').html($(this)[0].files[0].name);
+    }
+});
+
+
+/*
+$(document).on('change', ':file', function() {
+    var input = $(this),
+    numFiles = input.get(0).files ? input.get(0).files.length : 1,
+    label = input.val().replace(/\\/g, '/').replace(/.*\//, '');
+    console.log('files：',numFiles,label);
+    if(numFiles>1){
+      input.next().val(numFiles + 'ファイル');
+      input.next().prop('disabled', false);
+      input.next().focus();//バリデーターチェックをはずすため一旦フォーカスを入れる
+      input.next().blur();//バリデーターチェックをはずすためフォーカスをはずす
+      input.next().prop('disabled', true);
+    }else{
+      /*console.log(input.next().next().children().attr('id'));*/
+      /*
+      input.next().val(label);
+      input.next().prop('disabled', false);
+      input.next().focus();//バリデーターチェックをはずすため一旦フォーカスを入れる
+      input.next().blur();//バリデーターチェックをはずすためフォーカスをはずす
+      input.next().prop('disabled', true);
+    };
+  });
+  */
+// ファイル選択値をクリア.
+$('.reset').click(function(){
+    $(this).parent().prev().children('.custom-file-label').html('ファイル選択...');
+    $('.custom-file-input').val('');
+})
+/*
+$('#btn_clear_biz_plan').on('click', function() {
+  //$('#file_select').val(''); // IEだと動かない.
+  $('#biz_plan').html('<input type="file" id="biz_plan" class="form-control" style="display:none;">');
+  //既存のinput[type=file]を削除し、新しいinput[type=file]を作成する
+  //$('#biz_plan').replaceWith($('#biz_plan').clone()); // firefoxだと動かない
+  $('#biz_plan').next().next().val('');
+  
+  $('#biz_plan').next().next().prop('disabled', false);
+  $('#biz_plan').next().next().focus();//バリデーターチェックをするため一旦フォーカスを入れる
+  $('#biz_plan').next().next().blur();//バリデーターチェックをするためフォーカスをはずす
+  $('#biz_plan').next().next().prop('disabled', true);
+});
+$('#btn_clear_biz_Fund').on('click', function() {
+  //$('#file_select').val(''); // IEだと動かない.
+  $('#biz_Fund').html('<input type="file" id="biz_Fund" class="form-control" style="display:none;">');
+  //$('#biz_Fund').replaceWith($('#biz_Fund').clone()); // firefoxだと動かない
+  $('#biz_Fund').next().next().val('');
+  
+  $('#biz_Fund').next().next().prop('disabled', false);
+  $('#biz_Fund').next().next().focus();//バリデーターチェックをするため一旦フォーカスを入れる
+  $('#biz_Fund').next().next().blur();//バリデーターチェックをするためフォーカスをはずす
+  $('#biz_Fund').next().next().prop('disabled', true);
+});
+$('#btn_clear_corp_info').on('click', function() {
+  //$('#file_select').val(''); // IEだと動かない.
+  $('#corp_info').html('<input type="file" id="corp_info" class="form-control" style="display:none;">');
+  //$('#corp_info').replaceWith($('#corp_info').clone()); // firefoxだと動かない
+  $('#corp_info').next().next().val('');
+  
+  $('#corp_info').next().next().prop('disabled', false);
+  $('#corp_info').next().next().focus();//バリデーターチェックをするため一旦フォーカスを入れる
+  $('#corp_info').next().next().blur();//バリデーターチェックをするためフォーカスをはずす
+  $('#corp_info').next().next().prop('disabled', true);
+});
+$('#btn_clear_corp_teikan').on('click', function() {
+  //$('#file_select').val(''); // IEだと動かない.
+  $('#corp_teikan').html('<input type="file" id="corp_teikan" class="form-control" style="display:none;">');
+  //$('#corp_teikan').replaceWith($('#corp_teikan').clone()); // firefoxだと動かない
+  $('#corp_teikan').next().next().val('');
+  
+  $('#corp_teikan').next().next().prop('disabled', false);
+  $('#corp_teikan').next().next().focus();//バリデーターチェックをするため一旦フォーカスを入れる
+  $('#corp_teikan').next().next().blur();//バリデーターチェックをするためフォーカスをはずす
+  $('#corp_teikan').next().next().prop('disabled', true);
+});
+$('#btn_clear_corp_zaimu').on('click', function() {
+  //$('#file_select').val(''); // IEだと動かない.
+  $('#corp_zaimu').html('<input type="file" id="corp_zaimu" class="form-control" style="display:none;">');
+  //$('#corp_zaimu').replaceWith($('#corp_zaimu').clone()); // firefoxだと動かない
+  $('#corp_zaimu').next().next().val('');
+  
+  $('#corp_zaimu').next().next().prop('disabled', false);
+  $('#corp_zaimu').next().next().focus();//バリデーターチェックをするため一旦フォーカスを入れる
+  $('#corp_zaimu').next().next().blur();//バリデーターチェックをするためフォーカスをはずす
+  $('#corp_zaimu').next().next().prop('disabled', true);
+});
+$('#btn_clear_other_file').on('click', function() {
+  //$('#file_select').val(''); // IEだと動かない.
+  $('#other_file').html('<input type="file" id="other_file" class="form-control" style="display:none;">');
+  //$('#other_file').replaceWith($('#other_file').clone()); // firefoxだと動かない
+  $('#other_file').next().next().val('');
+  
+  $('#other_file').next().next().prop('disabled', false);
+  $('#other_file').next().next().focus();//バリデーターチェックをするため一旦フォーカスを入れる
+  $('#other_file').next().next().blur();//バリデーターチェックをするためフォーカスをはずす
+  $('#other_file').next().next().prop('disabled', true);
+});
+*/
+
+// 処理中アイコン用：ウィンドウ高さ
+function getScrollBottom() {
+  var body = window.document.body;
+  var html = window.document.documentElement;
+  var scrollTop = body.scrollTop || html.scrollTop;
+  return scrollTop + html.clientHeight //html.scrollHeight - html.clientHeight - scrollTop;
+};
+// 処理中アイコン表示・非表示
+function processing(processing) {
+  //$(window).scroll(function() {
+	var left = $(window).width() / 2 - $("#processing").width();//30; //Math.floor((($(window).width() - $("#processing").width()) / 2);
+	var top  = ($(window).height() / 2) + $(window).scrollTop() - $("#processing").height();//Math.floor(getScrollBottom() - $("#processing").height()-60);//$(myForm).scrollTop();//Math.floor($(window).height() - $("#processing").height() - 60);
+    //console.log('bottom',top);
+	$("#processing").css({
+                    "top": top,
+                    "left": left
+                    });
+    if (processing) {
+        document.getElementById('processing').style.visibility = "visible";
+    } else {
+        document.getElementById('processing').style.visibility = "hidden";
+    };
+};
+
+//■特殊なバリデータ設定
+/*
+function varid_area(){
+  if($('#pps_area').val()==''){
+    //console.log('addClass');
+    //$("#gr_area").addClass("has-error");
+    $('#area').prop('required',true);
+  }else{
+    //$("#gr_area").removeClass("has-error");
+    $('#area').prop('required',false);
+  };
+};
+function varid_ctry(){
+  if($('#pps_ctry').val()==''){
+    //$("#gr_ctry").addClass("has-error");
+    $('#ctry').prop('required',true);
+  }else{
+    //$("#gr_ctry").removeClass("has-error");
+    $('#ctry').prop('required',false);
+  };
+};
+
+// 対象地域のバリデータ
+$(function() {
+  $('[name=pps_area]').change(function() {
+    $('#pps_area').val($('[name=pps_area]').val());
+    $('#pps_area').focus();//バリデーターチェックをはずすため一旦フォーカスを入れる
+    $('#pps_area').blur();//バリデーターチェックをはずすためフォーカスをはずす 
+    varid_area();
+  });
+});
+// 対象国のバリデータ
+$(function() {
+  $('[name=pps_ctry]').change(function() {
+    $('#pps_ctry').val($('[name=pps_ctry]').val());
+    $('#pps_ctry').focus();//バリデーターチェックをはずすため一旦フォーカスを入れる
+    $('#pps_ctry').blur();//バリデーターチェックをはずすためフォーカスをはずす
+    varid_ctry();
+  });
+});
+/*
+*/
+
+//アンケート２チェックボックス
+/*
+$(function() {
+  $("#anq2 input[type='checkbox']").on('change', function () {
+  
+    console.log('checked:',$(this).attr('name'));
+    //var id = $(this).attr('name');
+    //var acd = 'clp_' + id;
+      tr=$('#anq2' + ' input:checkbox:checked').map(function(){
+        return $(this).val();
+      }).get();
+      $('#anq2_tx').val(tr)
+  });
+});
+*/
+
+//ＳＤＧｓ目標のチェック
+/*
+$(function() {
+  $("#ac_gr input[type='checkbox']").on('change', function () {
+  
+    console.log('checked:',$(this).attr('name'));
+    var id = $(this).attr('name');
+    var acd = 'clp_' + id;
+      tr=$('#' + acd + ' input:checkbox:checked').map(function(){
+        return $(this).val();
+      }).get();
+      $('#' + id + '_tx').val(tr)
+    SDGs_cnt_Check();
+  });
+});*/
+
+//ＳＤＧｓ目標のチェック
+$(function() {
+  $("#ck_sdgs input[type='checkbox']").on('change', function () {
+  
+    console.log('checked:',$(this).attr('name'));
+      tr=$('#ck_sdgs input:checkbox:checked').map(function(){
+        return $(this).val();
+      }).get();
+      $('#sdgs_tx').val(tr);
+    //SDGs_cnt_Check();
+  });
+});
+
+/*
+function SDGs_cnt_Check(){
+    /*もしCheckbox1個でも埋まっていたら"O"を入力する*/
+    /*
+    var cnt = $('#accordion input:checkbox:checked').length;
+    console.log('check_count:',cnt);
+    if(cnt > 0){
+      $('#sdgs').val('O');
+      $('#sdgs').focus();//バリデーターチェックをはずすため一旦フォーカスを入れる
+      $('#sdgs').blur();//バリデーターチェックをはずすためフォーカスをはずす
+      $("#accordion").css('border','none');
+      //$("#sdgs").removeClass("has-error");
+      //$("#accordion")$("#clp_tg1")$(".panel")$(".panel-heading")$("#ac_1")$("#ac_gr")$(".panel-default")
+      //$(".panel-group>.panel").css('border-color','#ddd');//$(".panel-group")
+    }else{
+      console.log('no_check!');
+      $('#sdgs').val('');
+      $('#sdgs').focus();//バリデーターチェックをはずすため一旦フォーカスを入れる
+      //$("#sdgs").addClass("has-error");
+      //$('#sdgs').validator({live:'enabled'});
+      $('#sdgs').blur();//バリデーターチェックをはずすためフォーカスをはずす
+      $("#accordion").css('border','1px solid #dc3545');
+      $("#accordion").css('border-radius','4px');//$(".panel-default")
+      //$(".panel-group .panel").addClass("has-error");
+    };
+};
+*/
+/*
+$('.form-group').on("click",'input:checkbox',function(){
+	checkboxValidate($(this).attr('name'));
+ });
+function checkboxValidate(name){
+	var min = 1 //minumum number of boxes to be checked for this form-group
+	if($('input[name="'+name+'"]:checked').length<min){
+	$('input[name="'+name+'"]').prop('required',true);
+	} else{
+	$('input[name="'+name+'"]').prop('required',false);
+	}
+}
+*/
+/*
+$(function(){
+  $('#myForm').change(function(){
+    $('#myForm').validator({live:'enabled'});
+    //console.log('動いてるよ');
+    //$(this).find(':submit').attr('disabled', !this.checkValidity());
+  });
+});
+/*★★★★★★★★★★★★★★★★★★★★★★★★*/
+/*$(function(){
+  $('#myForm').validate({
+    console.log('動いてるよ');
+    varid_area();
+    varid_ctry();
+    SDGs_cnt_Check();
+  });
+});
+*/
+$(function() {
+  
+  //processing(true);
+  // トースト通知の位置設定
+  toastr.options.positionClass = "toast-bottom-left"
+  
+  //$('#myForm').validator();
+  //console.log('ここでもチェック');
+  
+  //processing(false);
+  
+  // submit時のイベント登録
+  $('#myForm').validator().on('submit', function(e){
+    if (document.getElementById('send_button').className.indexOf("disabled") != -1) {
+      // submit用のボタンのスタイルにdisabledが設定されていればバリデーションエラー
+      //$(function(){$('#bt').click(function(){
+      //$('#bt').on('click', function() {
+      
+    } else {
+      // バリデーションエラーでなければ以下実行
+      processing(true);
+      var fld_ID=$('#fld_id').text();//★★★★★★
+      console.log('fld:',fld_ID);
+      if (fld_ID==''){
+        var oubo_name = $('#inp_corp').val();
+        google.script.run.withSuccessHandler(function(result){
+            var fld_ID=result;
+            console.log('GAS_fldID',fld_ID);
+            upFiles(fld_ID);
+        }).create_folder_gs(oubo_name);    
+      }else{
+        console.log('overwrite');
+        upFiles(fld_ID);
+      };
+    };
+  });
+});
+
+//■ファイルのアップロード
+function upFiles(fld_ID){
+  //document.getElementById("bt").addEventListener('click', upload_files);
+  var files_len = 0;
+  var uploaded_len = 0;
+  upload_files();
+  sendData(fld_ID);
+  
+      function upload_files() {
+        var files = document.getElementById('biz_plan').files;
+        files_len = files_len + files.length;
+        console.log("FileCnt_plan:",files_len)
+        for (var i = 0; i < files.length; i++) {
+          uploadFile(files[i],'_biz_plan');
+          document.getElementById('upload_label_biz_plan').textContent = "uploading...";
+        }
+        /*
+        var files = document.getElementById('biz_Fund').files;
+        files_len = files_len + files.length;
+        console.log("FileCnt:",files_len)
+        for (var i = 0; i < files.length; i++) {
+          //processing(true);
+          uploadFile(files[i],'_biz_Fund');
+          document.getElementById('upload_label_biz_Fund').textContent = "uploading...";
+        }
+        var files = document.getElementById('corp_info').files;
+        files_len = files_len + files.length;
+        console.log("FileCnt_Fund:",files_len)
+        for (var i = 0; i < files.length; i++) {
+          //processing(true);
+          uploadFile(files[i],'_corp_info');
+          document.getElementById('upload_label_corp_info').textContent = "uploading...";
+        }
+        */
+        /*
+        var files = document.getElementById('corp_teikan').files;
+        files_len = files_len + files.length;
+        console.log("FileCnt_info:",files_len)
+        for (var i = 0; i < files.length; i++) {
+        if(files.length>0){
+            //processing(true);
+            uploadFile(files[i],'_corp_teikan');
+            document.getElementById('upload_label_corp_teikan').textContent = "uploading...";
+          }
+        }
+        */
+        /*
+        var files = document.getElementById('corp_zaimu').files;
+        files_len = files_len + files.length;
+        console.log("FileCnt_FS:",files_len)
+        for (var i = 0; i < files.length; i++) {
+          //processing(true);
+          uploadFile(files[i],'_corp_zaimu');
+          document.getElementById('upload_label_corp_zaimu').textContent = "uploading...";
+        }
+        */
+        var files = document.getElementById('other_file').files;
+        files_len = files_len + files.length;
+        console.log("FileCnt_other:",files_len)
+        if(files.length>0){
+          for (var i = 0; i < files.length; i++) {
+            //processing(true);
+            uploadFile(files[i],'_other_file');
+            document.getElementById('upload_label_other_file').textContent = "uploading...";
+          }
+        }
+      }
+  
+      function uploadFile(file,id_label) {
+        var reader = new FileReader();
+        reader.onload = function() {
+          var reader_result = reader.result;
+          var file_name = file.name
+          google.script.run
+            .withSuccessHandler(uploaded(id_label))
+            .upload_file_gs(reader_result, file_name,fld_ID);
+        }
+        reader.readAsDataURL(file);
+      }
+  
+      function uploaded(id_label) {
+      //function uploaded(file_url) {
+        //create_link(file_url);
+        uploaded_len ++;
+        console.log("FileCount:",files_len,"UplodedFiles:",uploaded_len,"LabelID:",id_label);
+        //if(uploaded_len == files_len){
+          document.getElementById('upload_label' + id_label).textContent = "uploaded";
+          //processing(false);
+        //};
+      }
+      /*
+      function create_link(file_url) {
+        var div = document.getElementById("upload_div");
+        var br = document.createElement("br");
+        var link = document.createElement("a");
+        link.textContent = file_url;
+        link.setAttribute("href", file_url);
+        link.setAttribute("target", "_blank");
+        div.appendChild(link);
+        div.appendChild(br);
+      }
+      */
+
+};
+
+/**
+ コード.gsのregisterSSByFormData()を呼んで、フォームの内容をスプレッドシートに登録する
+*/
+function sendData(fld_ID) {
+
+    try {//$('#jigyogai').prop("checked");//事業場外 var inhh = $('#intime-hh option:selected').val();//出勤（時）
+        //processing(true);
+        if($('#recv_no').val()==''){
+          var uuid = getUniqueStr();
+        }else{
+          var uuid = $('#recv_no').val();
+        };
+        console.log('uuid',uuid);
+        var data = [];
+        data[0] = $('#list_row').val();//行番号
+        data[1] = uuid;//受付No.
+        data[2] = 'dummy';//提出日
+        data[3] = $('#inp_corp').val();//提案者名
+        data[4] = $('#inp_corp_kana').val();//提案者カナ
+        data[5] = $('#inp_pres_pos').val();//代表者役職
+        data[6] = $('#inp_pres').val();//代表者氏名
+        data[7] = $('#inp_pres_kana').val();//代表者カナ
+        data[8] = $('#inp_zip1').val() + '-' + $('#inp_zip2').val();//〒
+        data[9] = $('#inp_addr1 option:selected').text();//都道府県
+        data[10] = '\'' + $('#inp_addr2').val();//市区郡
+        data[11] = '\'' + $('#inp_addr3').val();//町域
+        data[12] = '\'' + $('#inp_addr4').val();//番地以降
+        data[13] = $('#inp_dept').val();//連絡先部署名
+        data[14] = $('#inp_name_pos').val();//連絡先役職
+        data[15] = $('#inp_name').val();//連絡先氏名
+        data[16] = $('#inp_name_kana').val();//連絡先氏名カナ
+        data[17] = '\'' + $('#inp_tel').val();//TEL
+        if($('#inp_mailadd').val()){
+          data[18] = $('#inp_mail').val() + ',' + $('#inp_mailadd').val().replace(/\s+/g, '');
+        }else{
+          data[18] = $('#inp_mail').val();//E-mail
+        };
+        data[19] = $('#inp_hp').val();//HP
+        
+        data[20] = $('#sdgs_tx').val();//SDGs目標
+        data[21] = $('#pps_sdgs_tx').val();//貢献内容
+        data[22] = $('#tx_reason').val();//応募理由
+        data[23] = tx_consultation();//相談内容
+        data[24] = $('#agreement').val();//応募留意事項同意
+        data[25] = fld_ID;//フォルダID
+        
+        google.script.run.withSuccessHandler(function(result) {
+          if (result.data) {
+            console.log('受付No.',uuid);
+            toastr.info('送信完了、受領画面へ遷移します。');
+            pagemove(uuid);
+          } else {
+            toastr.error('送信失敗しました');
+          };
+        }).withFailureHandler(function(result) {
+          processing(false);
+          toastr.error('データ送信に失敗しました。', result);
+        }).registerSSByFormData(data);
+        
+    } catch (e) {
+        toastr.error(e);
+    };
+};
+
+function tx_consultation(){
+  var sentence ='';
+  for(var i=1; i<=8; ++i ){
+    if($('#tx_support' + i).val()!==''){
+      sentence += '【' + $('#tx_support' + i).val() + '】';
+    };
+    if($('#tx_sodan' + i).val()!==''){
+      sentence += $('#tx_sodan' + i).val();
+    };
+  };
+  return sentence;
+};
+
+function getUniqueStr(myStrong){
+  var strong = 300;
+  if (myStrong) strong = myStrong;
+  return new Date().getTime().toString(16)  + Math.floor(strong*Math.random()).toString(16)
+};
+
+function pagemove(recv){
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (result !==null) {
+            var url = result;//'https://script.google.com/a/icnet.co.jp/macros/s/AKfycbwdXvymmGdioT9C4l0oEbeDKorvdmiNXVByRE8h2Zk/dev'; //
+            //?パラメータ名=値
+            var recv_id= '&recv=' + recv;
+            url += '?page=complete' + recv_id;//https://script.google.com/a/icnet.co.jp/macros/s/AKfycbwdXvymmGdioT9C4l0oEbeDKorvdmiNXVByRE8h2Zk/dev?page=complete&recv=●
+            console.log("transition:", url);
+            window.top.location.href = url;
+          };
+        })
+        .withFailureHandler(function(result) {
+          processing(false);
+          toastr.error('出力フォームページの取得に失敗しました。', result);
+        })
+        .getScriptUrl();
+
+};
+
+</script>

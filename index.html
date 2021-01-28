@@ -1,0 +1,74 @@
+<!-- HtmlService.createHtmlOutputFromFile()を使い、外だししてあるjavascript.htmlと、stylesheet.htmlをincludeする。 -->
+<!-- デザインにはbootstrapを使用 -->
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <?!= HtmlService.createHtmlOutputFromFile('stylesheet').getContent(); ?>
+    <base target="_top">
+</head>
+
+<body>
+
+  <nav class="navbar navbar-expand-lg navbar-light bg-light">
+    <a class="navbar-brand" href="https://script.google.com/a/icnet.co.jp/macros/s/AKfycbxa0dWvvrxHDb1jogjS7GLRBZ17LyVTCnEbwUxB/exec">Osaka SDGs Business Meet-Up 応募フォーム</a>
+    <button type="button" class="navbar-toggler" data-toggle="collapse" data-target="#navbarNavAltMarkup" aria-controls="navbarNavAltMarkup" aria-expanded="false" aria-label="ナビゲーションの切替">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarNavAltMarkup">
+      <div class="navbar-nav">
+        <a class="nav-item nav-link active" href="https://www.osakasdgsbusinessmeet-up.com/" target="_blank">ホーム <span class="sr-only">(現位置)</span></a>
+        <a class="nav-item nav-link" href="mailto:Osaka_SDGsBusiness@icnet.co.jp ?subject=【大阪SDGs応募】問い合わせ&amp;body=ご連絡先、ご用件をご記入ください。%0D%0A">問い合わせ</a>
+        <!--<a class="nav-link disabled" href="#" tabindex="-1" aria-disabled="true">無効</a>-->
+      </div>
+    </div>
+  </nav>
+  
+  <div class="container-fluid">
+    <form class="form-horizontal" id="myForm" onsubmit="return false;">
+    
+      <div class="form-group">
+        <div class="row">
+          <div class="col-auto mr-auto"></div>
+          <div class="col-auto">
+            <p class="text-center">
+              <small>since 2020-10-14</small>
+            </p>
+          </div>
+        </div>
+      </div>
+      
+      <div class="form-group">
+        <div class="row text-center">
+          <a id="inpt_url" href="#">
+            <div class="col mx-auto">
+              <!-- https://drive.google.com/file/d/15L_IAwl7g4DtmHxKnyvHNGpICPfbu93n/view?usp=sharing -->
+              <img src='http://drive.google.com/uc?export=view&id=<?= openimg ?>' class="img-fluid" style="width:60%;"/><!--画像URLはIDのみ変更する：https://drive.google.com/file/d/15L_IAwl7g4DtmHxKnyvHNGpICPfbu93n/view?usp=sharing-->
+              <p class="lead"><br>ご応募はこちらをクリック<br></p>
+            </div>
+          </a>
+        </div>
+      </div>
+      
+      <div class="form-group">
+        <div class="row">
+          <div class="col-8 mx-auto">
+            <p class="text-left">
+              当WEB応募は GoogleAppsScript 使用のため、ブラウザは<a href="https://www.google.com/intl/ja_jp/chrome/" target="_blank"> Google Chrome </a>推奨です。<br>
+              →Google Chrome ダウンロードは<a href="https://www.google.com/intl/ja_jp/chrome/" target="_blank">≪こちら≫</a>をクリック<br>
+            </p>
+            <p class="text-left text-danger">
+              ※Internet Explorer では正しく動作しない可能性があります。<br>
+            </p>
+          </div>
+        </div>
+      </div>
+      
+    </form>
+  <i id="processing" class="fa fa-spinner fa-spin fa-5x fa-fw my-gray" style="position:absolute;"></i>
+  </div>
+<?!= HtmlService.createHtmlOutputFromFile('js_index').getContent(); ?>
+</body>
+</html>
